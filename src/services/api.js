@@ -106,6 +106,24 @@ export const featureReportApi = {
     request(tenantPath(`/projects/${projectId}/feature-report/versions/${versionId}/activate`), { method: 'POST' }),
 };
 
+// Feature Matrix v2 — the evidence-first pipeline. Every yes/partial cell is
+// backed by a verbatim quote that the backend has already verified as an exact
+// substring of its source page; not_marketed and unverifiable mean different
+// things and must not be collapsed in the UI.
+export const featureMatrixV2Api = {
+  generate: (projectId, { refresh = false, vendorIds } = {}) => {
+    const qs = new URLSearchParams();
+    if (refresh) qs.set('refresh', 'true');
+    if (vendorIds?.length) qs.set('vendors', vendorIds.join(','));
+    const q = qs.toString();
+    return request(tenantPath(`/projects/${projectId}/feature-report/v2/generate${q ? `?${q}` : ''}`), { method: 'POST' });
+  },
+  getData: (projectId, { vendorIds } = {}) => {
+    const q = vendorIds?.length ? `?vendors=${vendorIds.join(',')}` : '';
+    return request(tenantPath(`/projects/${projectId}/feature-report/v2/data${q}`));
+  },
+};
+
 export const intelApi = {
   // Dashboard composites
   executiveSnapshot: () => request('/intel/dashboard/executive-snapshot'),
