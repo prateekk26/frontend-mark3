@@ -7,6 +7,9 @@ import useFeatureReportData from '../hooks/useFeatureReportData';
 import FeatureMatrix from '../components/feature-report/FeatureMatrix';
 import GapAnalysis from '../components/feature-report/GapAnalysis';
 import MessagingPlaybook from '../components/feature-report/MessagingPlaybook';
+import CapabilityMatrix from '../components/feature-report/CapabilityMatrix';
+import useCapabilityMatrixData from '../hooks/useCapabilityMatrixData';
+import '../styles/capability-matrix.css';
 import Spinner from '../components/report/ui/Spinner';
 import PillTabs from '../components/report/ui/PillTabs';
 
@@ -19,6 +22,9 @@ export default function FeatureReport() {
   const [activeTab, setActiveTab] = useState('matrix');
 
   const { data, loading, status, statusLabel, error, refreshing, refresh, loadReport } = useFeatureReportData(projectId);
+  // Feature Matrix v2 loads independently: it is flag-gated on the backend and
+  // must never block or break the v1 report if the flag is off.
+  const capability = useCapabilityMatrixData(projectId);
 
   const reactToPrintFn = useReactToPrint({ contentRef: printRef });
 
@@ -79,6 +85,7 @@ export default function FeatureReport() {
     { key: 'matrix', label: 'Feature Matrix' },
     { key: 'gaps', label: 'Gap Analysis' },
     { key: 'messaging', label: 'Competitor Messaging Playbook' },
+    { key: 'capability', label: 'Capability Matrix' },
   ];
 
   return (
@@ -126,6 +133,42 @@ export default function FeatureReport() {
             : <div className="card" style={{ textAlign: 'center', padding: '3rem 2rem', color: 'var(--gray-400)' }}>
                 <p style={{ fontSize: '1rem', fontWeight: 500 }}>Competitor Messaging Playbook data not yet available</p>
                 <p style={{ fontSize: '0.85rem' }}>Try regenerating the report to generate this section.</p>
+              </div>
+          }
+        </div>
+        <div className={`tab-section${activeTab === 'capability' ? '' : ' tab-section-hidden'}`}>
+          {capability.data
+            ? <CapabilityMatrix
+                report={capability.data}
+                subjectCompanyId={meta?.main_company?.id}
+              />
+            : <div className="card" style={{ textAlign: 'center', padding: '3rem 2rem', color: 'var(--gray-400)' }}>
+                {capability.generating ? (
+                  <>
+                    <p style={{ fontSize: '1rem', fontWeight: 500 }}>Building the evidence-first matrix…</p>
+                    <p style={{ fontSize: '0.85rem' }}>Sweeping vendor pages and verifying quotes. This runs long on first generation.</p>
+                  </>
+                ) : capability.unavailable ? (
+                  <>
+                    <p style={{ fontSize: '1rem', fontWeight: 500 }}>Capability Matrix is not enabled for this environment</p>
+                    <p style={{ fontSize: '0.85rem' }}>Set <code>FEATURE_MATRIX_V2</code> on the API to turn it on.</p>
+                  </>
+                ) : capability.error ? (
+                  <>
+                    <p style={{ fontSize: '1rem', fontWeight: 500 }}>Could not load the Capability Matrix</p>
+                    <p style={{ fontSize: '0.85rem' }}>{capability.error}</p>
+                  </>
+                ) : (
+                  <>
+                    <p style={{ fontSize: '1rem', fontWeight: 500 }}>No capability matrix generated yet</p>
+                    <p style={{ fontSize: '0.85rem', marginBottom: '1rem' }}>
+                      Evidence-first scoring: every yes or partial is backed by a verified verbatim quote.
+                    </p>
+                    <button className="btn-secondary" onClick={() => capability.reload({ refresh: true })}>
+                      Generate Capability Matrix
+                    </button>
+                  </>
+                )}
               </div>
           }
         </div>
